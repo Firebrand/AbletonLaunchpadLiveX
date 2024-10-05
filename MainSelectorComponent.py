@@ -45,6 +45,7 @@ class MainSelectorComponent(ModeSelectorComponent):
         self.set_modes_buttons(top_buttons[4:])
         self._long_press_delay = 0.5  # Long press delay in seconds
         self._button_press_times = {}
+        self._delete_mode = False
 
     def disconnect(self):
         for button in self._modes_buttons:
@@ -160,9 +161,11 @@ class MainSelectorComponent(ModeSelectorComponent):
             button.set_force_next_value()
 
     def _delete_clip_button(self, value):
-        slot1 = self.song().view.highlighted_clip_slot
-        if slot1.has_clip:
-            slot1.delete_clip()
+        self._delete_mode = True
+
+    def _set_active_track(self, track_index):
+        if track_index < len(self.song().tracks):
+            self.song().view.selected_track = self.song().tracks[track_index]
 
     def _do_nothing(self, param1):
         return
@@ -200,6 +203,7 @@ class MainSelectorComponent(ModeSelectorComponent):
             for track_index in range(8):
                 if as_active:
                     button = self._matrix.get_button(track_index, scene_index)
+                    button.add_value_listener(self._on_matrix_button_pressed, identify_sender=True)
                     if scene_index == 7:  
                         button.turn_off()
                     else:
@@ -230,6 +234,26 @@ class MainSelectorComponent(ModeSelectorComponent):
             self._session.set_track_bank_buttons(None, None)
             self._session.set_scene_bank_buttons(None, None)
         return
+    
+    def _on_matrix_button_pressed(self, value, sender, *args):
+        if value == 0:  # Button pressed
+            for track_index in range(8):
+                for scene_index in range(8):
+                    if sender == self._matrix.get_button(track_index, scene_index):
+                        self._set_active_track(track_index)
+                        if self._delete_mode:
+                            self._delete_clip(track_index, scene_index)
+                            self._delete_mode = False
+                        return
+
+    def _delete_clip(self, track_index, scene_index):
+        if track_index < len(self.song().tracks) and scene_index < len(self.song().scenes):
+                track = self.song().tracks[track_index]
+                if track and scene_index < len(track.clip_slots):
+                    clip_slot = track.clip_slots[scene_index]
+                    if clip_slot:
+                        if clip_slot.has_clip:
+                            clip_slot.delete_clip()
     
     def _on_scene_button_pressed(self, value, sender):   
         if self._mode_index == SESSION_MODE:
