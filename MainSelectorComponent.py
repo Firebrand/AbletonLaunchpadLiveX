@@ -161,7 +161,27 @@ class MainSelectorComponent(ModeSelectorComponent):
             button.set_force_next_value()
 
     def _delete_clip_button(self, value):
-        self._delete_mode = True
+        if value == 0:
+            self._delete_mode = not self._delete_mode
+            delete_button = self._side_buttons[7]
+            if self._delete_mode:
+                delete_button.set_on_off_values(RED_FULL, RED_THIRD)
+                delete_button.turn_on()
+                for scene_index in range(8):
+                    scene = self._session.scene(scene_index)
+                    for track_index in range(8):
+                        button = self._matrix.get_button(track_index, scene_index)
+                        if scene_index < 7:  
+                            scene.clip_slot(track_index).set_launch_button(None)
+            else:
+                delete_button.set_on_off_values(RED_FULL, LED_OFF)
+                delete_button.turn_off()
+                for scene_index in range(8):
+                    scene = self._session.scene(scene_index)
+                    for track_index in range(8):
+                        button = self._matrix.get_button(track_index, scene_index)
+                        if scene_index < 7:  
+                            scene.clip_slot(track_index).set_launch_button(button)
 
     def _set_active_track(self, track_index):
         if track_index < len(self.song().tracks):
@@ -192,8 +212,7 @@ class MainSelectorComponent(ModeSelectorComponent):
                 scene_button = self._side_buttons[scene_index]
                 scene_button.set_on_off_values(127, LED_OFF)
                 if scene_index == 7:  # delete clip
-                    scene_button.set_on_off_values(RED_FULL, RED_FULL)
-                    scene_button.turn_on() 
+                    scene_button.turn_off() 
                     scene_button.add_value_listener(self._delete_clip_button)
                 else:
                     scene.set_launch_button(None)
@@ -240,10 +259,13 @@ class MainSelectorComponent(ModeSelectorComponent):
             for track_index in range(8):
                 for scene_index in range(8):
                     if sender == self._matrix.get_button(track_index, scene_index):
-                        self._set_active_track(track_index)
                         if self._delete_mode:
                             self._delete_clip(track_index, scene_index)
-                            self._delete_mode = False
+                        else:
+                            self._set_active_track(track_index)
+                            # clip_slot = self.song().tracks[track_index].clip_slots[scene_index]
+                            # if clip_slot:
+                            #     clip_slot.fire()
                         return
 
     def _delete_clip(self, track_index, scene_index):
@@ -253,6 +275,8 @@ class MainSelectorComponent(ModeSelectorComponent):
                     clip_slot = track.clip_slots[scene_index]
                     if clip_slot:
                         if clip_slot.has_clip:
+                            button = self._matrix.get_button(track_index, scene_index);
+                            button.turn_off()
                             clip_slot.delete_clip()
     
     def _on_scene_button_pressed(self, value, sender):   
